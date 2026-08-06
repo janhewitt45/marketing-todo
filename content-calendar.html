@@ -81,6 +81,34 @@
     margin-top: 6px;
   }
 
+  .head-actions { display: flex; align-items: center; gap: 10px; }
+
+  /* fun link across to the to-do board */
+  .navlink {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--dark-green);
+    background: linear-gradient(120deg, #f2f6e6, #eef5f9 55%, #f6eef4);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 15px;
+    transition: transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .16s, background .16s;
+  }
+  .navlink:hover {
+    transform: translateY(-2px) rotate(-1.6deg);
+    box-shadow: 0 7px 18px rgba(94,126,43,.20);
+    background: linear-gradient(120deg, #eaf2d8, #e4f0f6 55%, #f2e2ee);
+  }
+  .navlink:active { transform: translateY(0) rotate(0); }
+  .navlink:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .navlink .ico { font-size: 1.05rem; line-height: 1; }
+  .navlink .arrow { transition: transform .16s; }
+  .navlink:hover .arrow { transform: translateX(3px); }
+  @media (max-width: 480px) { .navlink .label-full { display: none; } }
+
   /* ---- toolbar ---- */
   .toolbar {
     display: flex;
@@ -330,7 +358,12 @@
       <h1 id="appTitle">Social content calendar</h1>
       <div class="accent"></div>
     </div>
-    <button class="btn primary" id="addBtn">+ Plan a post</button>
+    <div class="head-actions">
+      <a class="navlink" href="index.html" title="Back to the to-do board">
+        <span class="ico">✅</span><span class="label-full">To-do&nbsp;board</span><span class="arrow">→</span>
+      </a>
+      <button class="btn primary" id="addBtn">+ Plan a post</button>
+    </div>
   </header>
 
   <div class="toolbar">
