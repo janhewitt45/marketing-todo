@@ -34,6 +34,7 @@
   --line:#e4e5df;
   --muted:#8a8a8e;
   --card:#ffffff;
+  --soft:#eef0e8;
 
   --radius:10px;
   --shadow:0 1px 2px rgba(85,85,89,.08), 0 4px 14px rgba(85,85,89,.06);
@@ -58,8 +59,7 @@ input{font-family:inherit;}
 
 header.top{
   display:flex;align-items:center;gap:16px;flex-wrap:wrap;
-  padding-bottom:18px;margin-bottom:20px;
-  border-bottom:2px solid var(--dark-green);
+  padding-bottom:16px;
 }
 .brand{display:flex;align-items:baseline;gap:12px;flex:1;min-width:220px;}
 .brand h1{
@@ -70,6 +70,25 @@ header.top{
   color:var(--dark-green);
 }
 .top-actions{display:flex;gap:8px;align-items:center;}
+
+/* ---- Tabs ----------------------------------------------------- */
+.tabs{
+  display:flex;gap:4px;flex-wrap:wrap;
+  border-bottom:2px solid var(--dark-green);margin-bottom:18px;
+}
+.tab{
+  border:0;background:transparent;padding:9px 14px;font-size:14.5px;font-weight:700;
+  color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;
+  display:inline-flex;align-items:center;gap:8px;border-radius:7px 7px 0 0;
+}
+.tab:hover{color:var(--grey);background:var(--soft);}
+.tab.on{color:var(--grey);border-bottom-color:var(--tab-accent, var(--green));}
+.tab .tdot{width:9px;height:9px;border-radius:3px;flex:none;}
+.tab .tcount{
+  font-size:11.5px;font-weight:700;color:var(--muted);
+  background:var(--soft);border-radius:10px;padding:1px 7px;min-width:20px;text-align:center;
+}
+.tab.on .tcount{background:var(--tab-accent, var(--green));color:#fff;}
 
 /* ---- Buttons -------------------------------------------------- */
 .btn{
@@ -83,7 +102,6 @@ header.top{
 .btn.primary{background:var(--green);border-color:var(--green);color:var(--white);}
 .btn.primary:hover{background:var(--dark-green);border-color:var(--dark-green);}
 .btn.ghost{background:transparent;}
-.btn-sm{padding:5px 9px;font-size:12.5px;border-radius:7px;}
 
 /* ---- Sync line ------------------------------------------------ */
 .syncline{
@@ -102,25 +120,26 @@ header.top{
 .banner.show{display:block;}
 .banner b{color:#5a1810;}
 
-/* ---- Board ---------------------------------------------------- */
+/* ---- Board (Everyone view) ------------------------------------ */
 .board{
   display:grid;gap:16px;
   grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));
   align-items:start;
 }
-.col{
-  background:transparent;border-radius:var(--radius);
-}
-.col-head{
-  display:flex;align-items:center;gap:9px;
-  padding:2px 4px 10px;
-}
+.col{background:transparent;border-radius:var(--radius);}
+.col-head{display:flex;align-items:center;gap:9px;padding:2px 4px 10px;}
 .swatch{width:11px;height:11px;border-radius:3px;flex:none;}
 .col-head h2{
   margin:0;font-size:16px;font-weight:700;color:var(--grey);flex:1;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .col-count{font-size:12px;font-weight:700;color:var(--muted);}
+
+/* ---- Single-person page --------------------------------------- */
+.page{max-width:680px;margin:0 auto;}
+.page-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;}
+.page-head .swatch{width:14px;height:14px;border-radius:4px;}
+.page-head h2{margin:0;font-size:21px;font-weight:700;color:var(--grey);flex:1;}
 
 /* add-task row */
 .add-row{display:flex;gap:7px;margin-bottom:12px;}
@@ -154,7 +173,6 @@ header.top{
 }
 .card-foot{display:flex;align-items:center;gap:6px;margin-top:10px;}
 
-/* live "working on it" tag */
 .workingtag{
   display:inline-flex;align-items:center;gap:6px;
   font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
@@ -165,7 +183,6 @@ header.top{
 
 .donestamp{font-size:11.5px;color:var(--muted);margin-right:auto;}
 
-/* segmented status control */
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;}
 .seg button{
   border:0;background:var(--white);color:var(--muted);
@@ -271,6 +288,8 @@ header.top{
     </div>
   </header>
 
+  <div class="tabs" id="tabs"></div>
+
   <div class="syncline">
     <span class="dot" id="syncDot"></span>
     <span id="syncText">Loading&hellip;</span>
@@ -291,7 +310,7 @@ header.top{
       <button class="icon-btn" data-close style="font-size:22px;">&times;</button>
     </div>
     <div class="modal-body">
-      <p class="hint">Rename anyone in place, or remove them. Removing a person keeps their finished work in the archive for reports; it just clears their column.</p>
+      <p class="hint">Rename anyone in place, or remove them. Removing a person keeps their finished work in the archive for reports; it just clears their page.</p>
       <div class="member-list" id="memberList"></div>
       <div class="add-member">
         <input type="text" id="newMemberName" placeholder="Add a team member&hellip;" maxlength="60" />
@@ -344,6 +363,8 @@ header.top{
   // state
   let members = [];
   let tasks = [];
+  let activeView = "everyone";   // "everyone" or a member name
+  let viewResolved = false;
   const $ = (id)=>document.getElementById(id);
 
   document.getElementById("appTitle").textContent = (typeof APP_TITLE==="string" && APP_TITLE) ? APP_TITLE : "Marketing to-do";
@@ -360,6 +381,25 @@ header.top{
     const tag=a.tagName;
     return tag==="INPUT" || tag==="TEXTAREA" || a.isContentEditable===true;
   }
+  function saveView(v){ try{ localStorage.setItem("todo_active_view", v); }catch(e){} }
+  function loadView(){ try{ return localStorage.getItem("todo_active_view"); }catch(e){ return null; } }
+  function resolveView(){
+    // 1) ?person= in the URL wins, so each person can bookmark their own link
+    try{
+      const p=new URLSearchParams(location.search).get("person");
+      if(p){
+        const want=decodeURIComponent(p).trim().toLowerCase();
+        const hit=members.find(m=>m.name.toLowerCase()===want || m.name.toLowerCase().split(" ")[0]===want);
+        if(hit) return hit.name;
+      }
+    }catch(e){}
+    // 2) whatever this browser last looked at
+    const saved=loadView();
+    if(saved==="everyone") return "everyone";
+    if(saved && members.some(m=>m.name===saved)) return saved;
+    // 3) default
+    return "everyone";
+  }
 
   let toastTimer;
   function toast(msg){
@@ -372,9 +412,9 @@ header.top{
   function setSync(state){
     const dot=$("syncDot"), txt=$("syncText");
     dot.className="dot"+(state==="err"?" err":state==="stale"?" stale":"");
-    if(state==="ok"){ const n=new Date(); txt.textContent="Up to date &middot; "+String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0"); txt.innerHTML=txt.textContent; }
+    if(state==="ok"){ const n=new Date(); txt.textContent="Up to date · "+String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0"); }
     else if(state==="err"){ txt.textContent="Can't reach the database"; }
-    else { txt.textContent="Syncing&hellip;"; }
+    else { txt.textContent="Syncing…"; }
   }
 
   /* ---------- data ---------- */
@@ -389,12 +429,13 @@ header.top{
       if(tRes.error) throw tRes.error;
       members = mRes.data || [];
       tasks = tRes.data || [];
+      if(!viewResolved){ activeView = resolveView(); viewResolved = true; }
       clearBanner(); setSync("ok"); render();
     }catch(err){
       setSync("err");
       const msg = (err && err.message) ? err.message : "Unknown error";
       showBanner("<b>Couldn't load the list.</b> "+esc(msg)+
-        " &mdash; if the project has been quiet for over a week, Supabase may have paused it. Open your Supabase dashboard and click <b>Resume</b>, then hit Refresh.");
+        " — if the project has been quiet for over a week, Supabase may have paused it. Open your Supabase dashboard and click <b>Resume</b>, then hit Refresh.");
     }
   }
 
@@ -440,15 +481,47 @@ header.top{
     toast("Removed"); await loadAll(); renderMembers();
   }
 
-  /* ---------- board render ---------- */
+  /* ---------- view switching ---------- */
+  function setView(v){ activeView=v; saveView(v); render(); }
+
   function render(){
+    // if the active person was renamed or removed, fall back to the overview
+    if(activeView!=="everyone" && !members.some(m=>m.name===activeView)) activeView="everyone";
+    renderTabs();
     const board=$("board");
+    if(activeView==="everyone") renderEveryone(board);
+    else renderPerson(board, activeView);
+  }
+
+  function renderTabs(){
+    const bar=$("tabs"); bar.innerHTML="";
+    const makeTab=(view,label,accent,count)=>{
+      const b=document.createElement("button");
+      b.className="tab"+(activeView===view?" on":"");
+      if(accent) b.style.setProperty("--tab-accent",accent);
+      let html="";
+      if(accent) html+='<span class="tdot" style="background:'+accent+'"></span>';
+      html+='<span>'+esc(label)+'</span>';
+      if(count!=null) html+='<span class="tcount">'+count+'</span>';
+      b.innerHTML=html;
+      b.addEventListener("click",()=>setView(view));
+      return b;
+    };
+    bar.appendChild(makeTab("everyone","Everyone",null,null));
+    members.forEach((m,i)=>{
+      const active=tasks.filter(t=>t.owner===m.name && t.status!=="done").length;
+      bar.appendChild(makeTab(m.name, m.name, accentFor(i), active));
+    });
+  }
+
+  /* ---------- Everyone view (columns) ---------- */
+  function renderEveryone(board){
+    board.className="board";
     board.innerHTML="";
 
     const memberNames = members.map(m=>m.name);
     const columns = members.map((m,i)=>({name:m.name, accent:accentFor(i), addable:true}));
 
-    // any tasks owned by someone no longer on the team -> "Other" column
     const orphanOwners=[...new Set(tasks.map(t=>t.owner).filter(o=>o && !memberNames.includes(o)))];
     if(orphanOwners.length){
       columns.push({name:"Other / former", accent:OTHER_ACCENT, addable:false, owners:orphanOwners});
@@ -463,14 +536,8 @@ header.top{
       const owners = col.owners || [col.name];
       const mine = tasks.filter(t=>owners.includes(t.owner));
       const active = mine.filter(t=>t.status!=="done");
-      const recentDone = mine.filter(isRecentDone)
-        .sort((a,b)=>new Date(b.completed_at)-new Date(a.completed_at));
-
-      // doing first, then todo, each oldest-first already
-      active.sort((a,b)=>{
-        const rank=s=>s==="doing"?0:1;
-        return rank(a.status)-rank(b.status);
-      });
+      const recentDone = mine.filter(isRecentDone).sort((a,b)=>new Date(b.completed_at)-new Date(a.completed_at));
+      active.sort((a,b)=>{ const rank=s=>s==="doing"?0:1; return rank(a.status)-rank(b.status); });
 
       const el=document.createElement("div");
       el.className="col";
@@ -484,42 +551,84 @@ header.top{
       el.appendChild(head);
 
       if(col.addable){
-        const row=document.createElement("div");
-        row.className="add-row";
-        const inp=document.createElement("input");
-        inp.type="text"; inp.placeholder="Add a task&hellip;"; inp.maxLength=200;
-        const btn=document.createElement("button");
-        btn.className="add-btn"; btn.textContent="+"; btn.title="Add task";
-        const go=()=>{ const v=inp.value; if(v.trim()){ inp.value=""; addTask(col.name,v);} inp.focus(); };
-        btn.addEventListener("click",go);
-        inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
-        row.appendChild(inp); row.appendChild(btn);
-        el.appendChild(row);
+        el.appendChild(addRow(col.name));
       }
 
       const cards=document.createElement("div");
       cards.className="cards";
-
       if(!active.length && !recentDone.length){
         const em=document.createElement("div");
         em.className="empty";
         em.textContent = col.addable ? "Nothing on the go. Add the first task above." : "No tasks here.";
         cards.appendChild(em);
       }
-
       active.forEach(t=>cards.appendChild(taskCard(t,col.accent)));
-
       if(recentDone.length){
         const div=document.createElement("div");
-        div.className="divider";
-        div.textContent="Done this week";
+        div.className="divider"; div.textContent="Done this week";
         cards.appendChild(div);
         recentDone.forEach(t=>cards.appendChild(taskCard(t,col.accent)));
       }
-
       el.appendChild(cards);
       board.appendChild(el);
     });
+  }
+
+  /* ---------- Single-person page ---------- */
+  function renderPerson(board, name){
+    board.className="";               // drop the grid for the focused page
+    board.innerHTML="";
+    const idx=members.findIndex(m=>m.name===name);
+    const accent=accentFor(idx<0?0:idx);
+
+    const mine=tasks.filter(t=>t.owner===name);
+    const active=mine.filter(t=>t.status!=="done");
+    active.sort((a,b)=>{ const rank=s=>s==="doing"?0:1; return rank(a.status)-rank(b.status); });
+    const recentDone=mine.filter(isRecentDone).sort((a,b)=>new Date(b.completed_at)-new Date(a.completed_at));
+
+    const page=document.createElement("div");
+    page.className="page";
+    page.style.setProperty("--col-accent", accent);
+
+    const head=document.createElement("div");
+    head.className="page-head";
+    head.innerHTML='<span class="swatch" style="background:'+accent+'"></span>'+
+      '<h2>'+esc(name)+'</h2>'+
+      '<span class="col-count">'+active.length+' on the go</span>';
+    page.appendChild(head);
+
+    page.appendChild(addRow(name));
+
+    const cards=document.createElement("div");
+    cards.className="cards";
+    if(!active.length && !recentDone.length){
+      const em=document.createElement("div"); em.className="empty";
+      em.textContent="Nothing on the go. Add the first task above.";
+      cards.appendChild(em);
+    }
+    active.forEach(t=>cards.appendChild(taskCard(t,accent)));
+    if(recentDone.length){
+      const div=document.createElement("div"); div.className="divider"; div.textContent="Done this week";
+      cards.appendChild(div);
+      recentDone.forEach(t=>cards.appendChild(taskCard(t,accent)));
+    }
+    page.appendChild(cards);
+    board.appendChild(page);
+  }
+
+  /* ---------- shared bits ---------- */
+  function addRow(owner){
+    const row=document.createElement("div");
+    row.className="add-row";
+    const inp=document.createElement("input");
+    inp.type="text"; inp.placeholder="Add a task…"; inp.maxLength=200;
+    const btn=document.createElement("button");
+    btn.className="add-btn"; btn.textContent="+"; btn.title="Add task";
+    const go=()=>{ const v=inp.value; if(v.trim()){ inp.value=""; addTask(owner,v);} inp.focus(); };
+    btn.addEventListener("click",go);
+    inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+    row.appendChild(inp); row.appendChild(btn);
+    return row;
   }
 
   function taskCard(t, accent){
@@ -527,7 +636,6 @@ header.top{
     card.className="card"+(t.status==="doing"?" doing":"")+(t.status==="done"?" done":"");
     card.style.setProperty("--col-accent", accent);
 
-    // title (click to edit)
     const title=document.createElement("div");
     title.className="title";
     title.textContent=t.title;
@@ -554,7 +662,6 @@ header.top{
       foot.appendChild(sp);
     }
 
-    // segmented status
     const seg=document.createElement("div");
     seg.className="seg";
     [["todo","To do","s-todo"],["doing","Doing","s-doing"],["done","Done","s-done"]].forEach(([val,label,cls])=>{
