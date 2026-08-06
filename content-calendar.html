@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Social content calendar</title>
+
+<!-- ============================================================= -->
+<!-- CONFIG: the only bits you'd ever need to touch.               -->
+<!--   SUPABASE_URL / SUPABASE_KEY: your project's public values   -->
+<!--     (same project as the to-do board, just a new table).      -->
+<!--   APP_TITLE: change this to rename the calendar.              -->
+<!--   OWNERS: names offered in the optional "who's on it" box.    -->
+<!-- ============================================================= -->
+<script>
+  const SUPABASE_URL = "https://axgquyqnvaqkjacuowxs.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_CeA_c2AeOqsfmY6VT-qWGw_gH-EYckP";
+  const APP_TITLE = "Social content calendar";
+  const OWNERS = ["Jan", "Hannah"];
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --green: #85a312;
+    --blue: #569bbe;
+    --purple: #853175;
+    --dark-green: #5e7e2b;
+
+    --ink: #22271b;
+    --grey: #6b7264;
+    --line: #e4e8da;
+    --paper: #ffffff;
+    --muted: #f5f7ef;
+    --shadow: 0 1px 2px rgba(34,39,27,.06), 0 8px 24px rgba(34,39,27,.08);
+
+    --li: var(--blue);
+    --ig: var(--purple);
+    --both: var(--green);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Carlito", "Calibri", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--muted);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 24px 20px 64px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  header.top h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -.01em;
+  }
+  header.top .accent {
+    height: 4px;
+    width: 46px;
+    background: linear-gradient(90deg, var(--green), var(--blue) 55%, var(--purple));
+    border-radius: 4px;
+    margin-top: 6px;
+  }
+
+  /* ---- toolbar ---- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .monthnav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .monthnav h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0;
+    min-width: 168px;
+  }
+  .btn {
+    font: inherit;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    line-height: 1;
+    transition: background .12s, border-color .12s, transform .04s;
+  }
+  .btn:hover { background: var(--muted); border-color: #d5dbc6; }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .btn.icon { padding: 7px 11px; font-weight: 700; }
+  .btn.primary {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+    font-weight: 700;
+  }
+  .btn.primary:hover { background: var(--dark-green); border-color: var(--dark-green); }
+  .btn.today { font-weight: 700; }
+
+  .filters { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .seg {
+    display: inline-flex;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .seg button {
+    font: inherit;
+    border: 0;
+    background: transparent;
+    color: var(--grey);
+    padding: 7px 12px;
+    cursor: pointer;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { color: var(--ink); font-weight: 700; background: var(--muted); }
+  .seg button:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot.li { background: var(--li); }
+  .dot.ig { background: var(--ig); }
+  .dot.both { background: var(--both); }
+
+  /* ---- month grid ---- */
+  .calendar { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .dow { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--line); }
+  .dow span {
+    padding: 10px 12px;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--grey);
+  }
+  .dow span.we { color: #a7ad9b; }
+
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .cell {
+    min-height: 118px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 6px 7px 8px;
+    cursor: pointer;
+    position: relative;
+    transition: background .1s;
+  }
+  .cell:nth-child(7n) { border-right: 0; }
+  .grid > .cell:nth-last-child(-n+7) { border-bottom: 0; }
+  .cell:hover { background: var(--muted); }
+  .cell:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+  .cell.out { background: #fafbf6; cursor: pointer; }
+  .cell.out .num { color: #c3c9b6; }
+  .cell.we { background: #fbfcf7; }
+  .cell.we.out { background: #f7f8f1; }
+  .num {
+    font-size: .84rem;
+    font-weight: 700;
+    color: var(--grey);
+    width: 26px; height: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 7px;
+  }
+  .cell.today .num { background: var(--green); color: #fff; }
+  .cell .addhint {
+    position: absolute; top: 7px; right: 7px;
+    font-size: 1rem; line-height: 1; color: #c3c9b6;
+    opacity: 0; transition: opacity .1s;
+  }
+  .cell:hover .addhint { opacity: 1; }
+
+  .chips { margin-top: 4px; display: flex; flex-direction: column; gap: 4px; }
+  .chip {
+    text-align: left;
+    font: inherit;
+    font-size: .8rem;
+    line-height: 1.2;
+    border: 0;
+    border-left: 3px solid var(--line);
+    background: var(--muted);
+    color: var(--ink);
+    border-radius: 5px;
+    padding: 4px 6px 4px 7px;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chip:hover { filter: brightness(.97); }
+  .chip:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+  .chip.li { border-left-color: var(--li); background: #eef5f9; }
+  .chip.ig { border-left-color: var(--ig); background: #f6eef4; }
+  .chip.both { border-left-color: var(--both); background: #f2f6e6; }
+  .chip .tag { font-size: .66rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; opacity: .7; margin-right: 4px; }
+
+  /* ---- mobile agenda ---- */
+  .agenda { display: none; }
+  .agenda .day { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; }
+  .agenda .day h3 {
+    margin: 0; padding: 10px 14px; font-size: .95rem; font-weight: 700;
+    border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px;
+  }
+  .agenda .day h3 .wd { color: var(--grey); font-weight: 400; }
+  .agenda .day.today h3 { color: var(--dark-green); }
+  .agenda .row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid #f0f2e9; cursor: pointer; }
+  .agenda .row:first-of-type { border-top: 0; }
+  .agenda .row:hover { background: var(--muted); }
+  .agenda .row .bar { width: 4px; align-self: stretch; border-radius: 3px; background: var(--line); }
+  .agenda .row.li .bar { background: var(--li); }
+  .agenda .row.ig .bar { background: var(--ig); }
+  .agenda .row.both .bar { background: var(--both); }
+  .agenda .row .meta { font-size: .74rem; color: var(--grey); text-transform: uppercase; letter-spacing: .03em; }
+
+  .empty {
+    text-align: center;
+    color: var(--grey);
+    padding: 46px 20px;
+    font-size: .98rem;
+  }
+
+  /* ---- modal ---- */
+  .backdrop {
+    position: fixed; inset: 0;
+    background: rgba(34,39,27,.42);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 18px;
+    z-index: 50;
+  }
+  .backdrop.open { display: flex; }
+  .modal {
+    background: var(--paper);
+    width: 100%; max-width: 460px;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(34,39,27,.28);
+    padding: 22px;
+    max-height: 92vh; overflow: auto;
+  }
+  .modal h2 { margin: 0 0 4px; font-size: 1.2rem; }
+  .modal .sub { color: var(--grey); font-size: .88rem; margin: 0 0 16px; }
+  label { display: block; font-size: .82rem; font-weight: 700; margin: 12px 0 5px; color: #3c4235; }
+  input[type="text"], input[type="date"], textarea, select {
+    font: inherit;
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 9px 11px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--blue); outline-offset: 0; border-color: var(--blue); }
+  textarea { min-height: 84px; resize: vertical; }
+  .platform-pick { display: flex; gap: 8px; }
+  .platform-pick label {
+    flex: 1; margin: 0; text-align: center;
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 9px 6px; cursor: pointer; font-weight: 700; font-size: .9rem;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background .1s, border-color .1s;
+  }
+  .platform-pick input { position: absolute; opacity: 0; pointer-events: none; }
+  .platform-pick label:has(input:checked) { background: var(--muted); }
+  .platform-pick label.li:has(input:checked) { border-color: var(--li); box-shadow: inset 0 0 0 1px var(--li); }
+  .platform-pick label.ig:has(input:checked) { border-color: var(--ig); box-shadow: inset 0 0 0 1px var(--ig); }
+  .platform-pick label.both:has(input:checked) { border-color: var(--both); box-shadow: inset 0 0 0 1px var(--both); }
+  .platform-pick label:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  .modal .actions { display: flex; gap: 10px; margin-top: 20px; align-items: center; }
+  .modal .actions .spacer { flex: 1; }
+  .btn.danger { color: #a8322f; border-color: #ecd3d2; background: #fbf3f2; }
+  .btn.danger:hover { background: #f6e6e5; }
+
+  .msg {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px;
+    font-size: .9rem; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    opacity: 0; pointer-events: none; transition: opacity .18s; z-index: 60;
+  }
+  .msg.show { opacity: 1; }
+  .msg.err { background: #8a2b28; }
+
+  @media (max-width: 720px) {
+    .calendar { display: none; }
+    .agenda { display: block; }
+    .monthnav h2 { min-width: 0; font-size: 1.05rem; }
+    header.top h1 { font-size: 1.3rem; }
+    .toolbar { gap: 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 id="appTitle">Social content calendar</h1>
+      <div class="accent"></div>
+    </div>
+    <button class="btn primary" id="addBtn">+ Plan a post</button>
+  </header>
+
+  <div class="toolbar">
+    <div class="monthnav">
+      <button class="btn icon" id="prevBtn" aria-label="Previous month">‹</button>
+      <h2 id="monthLabel">—</h2>
+      <button class="btn icon" id="nextBtn" aria-label="Next month">›</button>
+      <button class="btn today" id="todayBtn">Today</button>
+    </div>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Filter by platform">
+        <button data-filter="all" aria-pressed="true">All</button>
+        <button data-filter="linkedin" aria-pressed="false"><span class="dot li"></span>LinkedIn</button>
+        <button data-filter="instagram" aria-pressed="false"><span class="dot ig"></span>Instagram</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="calendar" id="calendar">
+    <div class="dow" id="dow"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="agenda" id="agenda"></div>
+</div>
+
+<!-- editor modal -->
+<div class="backdrop" id="backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Plan a post</h2>
+    <p class="sub" id="modalSub">Add an idea to the calendar.</p>
+
+    <label for="fDate">Date</label>
+    <input type="date" id="fDate" />
+
+    <label>Platform</label>
+    <div class="platform-pick">
+      <label class="li"><input type="radio" name="platform" value="linkedin" /><span class="dot li"></span>LinkedIn</label>
+      <label class="ig"><input type="radio" name="platform" value="instagram" /><span class="dot ig"></span>Instagram</label>
+      <label class="both"><input type="radio" name="platform" value="both" checked /><span class="dot both"></span>Both</label>
+    </div>
+
+    <label for="fTitle">Post idea</label>
+    <input type="text" id="fTitle" maxlength="140" placeholder="Short hook or headline (shows on the calendar)" />
+
+    <label for="fOwner">Who's on it <span style="font-weight:400;color:var(--grey)">(optional)</span></label>
+    <input type="text" id="fOwner" list="ownerList" placeholder="e.g. Jan" />
+    <datalist id="ownerList"></datalist>
+
+    <label for="fNotes">Details <span style="font-weight:400;color:var(--grey)">(optional)</span></label>
+    <textarea id="fNotes" placeholder="Draft caption, links, assets needed, hashtags…"></textarea>
+
+    <div class="actions">
+      <button class="btn danger" id="deleteBtn" style="display:none">Delete</button>
+      <div class="spacer"></div>
+      <button class="btn" id="cancelBtn">Cancel</button>
+      <button class="btn primary" id="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="msg" id="msg"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function () {
+  "use strict";
+
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const PLATFORM_LABEL = { linkedin: "LinkedIn", instagram: "Instagram", both: "Both" };
+  const PLATFORM_SHORT = { linkedin: "in", instagram: "IG", both: "Both" };
+
+  let posts = [];
+  let view = new Date();          // any day within the month being viewed
+  let filter = "all";             // all | linkedin | instagram
+  let editingId = null;
+
+  document.getElementById("appTitle").textContent = APP_TITLE;
+  document.title = APP_TITLE;
+
+  // owner suggestions
+  const dl = document.getElementById("ownerList");
+  OWNERS.forEach(function (o) {
+    const opt = document.createElement("option");
+    opt.value = o;
+    dl.appendChild(opt);
+  });
+
+  // day-of-week header
+  const dowEl = document.getElementById("dow");
+  DOW.forEach(function (d, i) {
+    const s = document.createElement("span");
+    if (i >= 5) s.className = "we";
+    s.textContent = d;
+    dowEl.appendChild(s);
+  });
+
+  function ymd(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+  function todayStr() { return ymd(new Date()); }
+
+  function passesFilter(p) {
+    if (filter === "all") return true;
+    if (filter === "linkedin") return p.platform === "linkedin" || p.platform === "both";
+    if (filter === "instagram") return p.platform === "instagram" || p.platform === "both";
+    return true;
+  }
+
+  function postsOn(dateStr) {
+    return posts.filter(function (p) { return p.post_date === dateStr && passesFilter(p); });
+  }
+
+  async function load() {
+    const res = await db.from("content_posts").select("*").order("post_date", { ascending: true });
+    if (res.error) { toast("Couldn't load the calendar. Check your connection and refresh.", true); return; }
+    posts = res.data || [];
+    render();
+  }
+
+  function render() {
+    renderMonthLabel();
+    renderGrid();
+    renderAgenda();
+  }
+
+  function renderMonthLabel() {
+    document.getElementById("monthLabel").textContent = MONTHS[view.getMonth()] + " " + view.getFullYear();
+  }
+
+  function gridStart(d) {
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    let wd = (first.getDay() + 6) % 7; // Monday = 0
+    return new Date(d.getFullYear(), d.getMonth(), 1 - wd);
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById("grid");
+    grid.innerHTML = "";
+    const start = gridStart(view);
+    const thisMonth = view.getMonth();
+    const today = todayStr();
+
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const ds = ymd(d);
+      const isWeekend = (d.getDay() === 0 || d.getDay() === 6);
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      if (d.getMonth() !== thisMonth) cell.classList.add("out");
+      if (isWeekend) cell.classList.add("we");
+      if (ds === today) cell.classList.add("today");
+      cell.tabIndex = 0;
+      cell.setAttribute("role", "button");
+      cell.setAttribute("aria-label", "Plan a post on " + d.getDate() + " " + MONTHS[d.getMonth()]);
+
+      const num = document.createElement("span");
+      num.className = "num";
+      num.textContent = d.getDate();
+      cell.appendChild(num);
+
+      const hint = document.createElement("span");
+      hint.className = "addhint";
+      hint.textContent = "+";
+      cell.appendChild(hint);
+
+      const chips = document.createElement("div");
+      chips.className = "chips";
+      postsOn(ds).forEach(function (p) {
+        chips.appendChild(makeChip(p));
+      });
+      cell.appendChild(chips);
+
+      cell.addEventListener("click", function (e) {
+        if (e.target.closest(".chip")) return;
+        openEditor(null, ds);
+      });
+      cell.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openEditor(null, ds); }
+      });
+
+      grid.appendChild(cell);
+    }
+  }
+
+  function makeChip(p) {
+    const b = document.createElement("button");
+    b.className = "chip " + p.platform;
+    b.title = p.title + (p.owner ? " · " + p.owner : "");
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = PLATFORM_SHORT[p.platform];
+    b.appendChild(tag);
+    b.appendChild(document.createTextNode(p.title));
+    b.addEventListener("click", function (e) { e.stopPropagation(); openEditor(p, p.post_date); });
+    return b;
+  }
+
+  function renderAgenda() {
+    const wrap = document.getElementById("agenda");
+    wrap.innerHTML = "";
+    const y = view.getFullYear(), m = view.getMonth();
+    const today = todayStr();
+
+    const monthPosts = posts.filter(function (p) {
+      const parts = p.post_date.split("-");
+      return Number(parts[0]) === y && Number(parts[1]) === m + 1 && passesFilter(p);
+    });
+
+    if (monthPosts.length === 0) {
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "Nothing planned this month yet. Tap a day on desktop, or use “Plan a post” to add the first one.";
+      wrap.appendChild(e);
+      return;
+    }
+
+    const byDate = {};
+    monthPosts.forEach(function (p) { (byDate[p.post_date] = byDate[p.post_date] || []).push(p); });
+
+    Object.keys(byDate).sort().forEach(function (ds) {
+      const d = new Date(ds + "T00:00:00");
+      const day = document.createElement("div");
+      day.className = "day" + (ds === today ? " today" : "");
+      const h = document.createElement("h3");
+      h.innerHTML = "<span>" + d.getDate() + " " + MONTHS[d.getMonth()] + "</span> <span class='wd'>" + WEEKDAYS[d.getDay()] + "</span>";
+      day.appendChild(h);
+      byDate[ds].forEach(function (p) {
+        const row = document.createElement("div");
+        row.className = "row " + p.platform;
+        row.innerHTML = "<div class='bar'></div>";
+        const txt = document.createElement("div");
+        txt.style.flex = "1";
+        txt.innerHTML = "<div>" + escapeHtml(p.title) + "</div><div class='meta'>" +
+          PLATFORM_LABEL[p.platform] + (p.owner ? " · " + escapeHtml(p.owner) : "") + "</div>";
+        row.appendChild(txt);
+        row.addEventListener("click", function () { openEditor(p, p.post_date); });
+        day.appendChild(row);
+      });
+      wrap.appendChild(day);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // ---- editor ----
+  const backdrop = document.getElementById("backdrop");
+  const fDate = document.getElementById("fDate");
+  const fTitle = document.getElementById("fTitle");
+  const fOwner = document.getElementById("fOwner");
+  const fNotes = document.getElementById("fNotes");
+  const deleteBtn = document.getElementById("deleteBtn");
+
+  function setPlatform(v) {
+    const el = document.querySelector('input[name="platform"][value="' + v + '"]');
+    if (el) el.checked = true;
+  }
+  function getPlatform() {
+    const el = document.querySelector('input[name="platform"]:checked');
+    return el ? el.value : "both";
+  }
+
+  function openEditor(post, dateStr) {
+    editingId = post ? post.id : null;
+    document.getElementById("modalTitle").textContent = post ? "Edit post" : "Plan a post";
+    document.getElementById("modalSub").textContent = post ? "Update or remove this idea." : "Add an idea to the calendar.";
+    fDate.value = post ? post.post_date : (dateStr || todayStr());
+    setPlatform(post ? post.platform : "both");
+    fTitle.value = post ? post.title : "";
+    fOwner.value = post && post.owner ? post.owner : "";
+    fNotes.value = post && post.notes ? post.notes : "";
+    deleteBtn.style.display = post ? "inline-block" : "none";
+    backdrop.classList.add("open");
+    setTimeout(function () { fTitle.focus(); }, 30);
+  }
+  function closeEditor() { backdrop.classList.remove("open"); editingId = null; }
+
+  async function save() {
+    const title = fTitle.value.trim();
+    if (!title) { fTitle.focus(); toast("Give the post a short title first.", true); return; }
+    const row = {
+      post_date: fDate.value,
+      platform: getPlatform(),
+      title: title,
+      owner: fOwner.value.trim() || null,
+      notes: fNotes.value.trim() || null
+    };
+    let res;
+    if (editingId) res = await db.from("content_posts").update(row).eq("id", editingId);
+    else res = await db.from("content_posts").insert(row);
+    if (res.error) { toast("Couldn't save — try again in a moment.", true); return; }
+    closeEditor();
+    toast(editingId ? "Post updated." : "Post added.");
+    await load();
+  }
+
+  async function removePost() {
+    if (!editingId) return;
+    const res = await db.from("content_posts").delete().eq("id", editingId);
+    if (res.error) { toast("Couldn't delete — try again.", true); return; }
+    closeEditor();
+    toast("Post removed.");
+    await load();
+  }
+
+  // ---- toast ----
+  let toastTimer = null;
+  function toast(text, isErr) {
+    const m = document.getElementById("msg");
+    m.textContent = text;
+    m.className = "msg show" + (isErr ? " err" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { m.className = "msg"; }, 2600);
+  }
+
+  // ---- wiring ----
+  document.getElementById("prevBtn").addEventListener("click", function () {
+    view = new Date(view.getFullYear(), view.getMonth() - 1, 1); render();
+  });
+  document.getElementById("nextBtn").addEventListener("click", function () {
+    view = new Date(view.getFullYear(), view.getMonth() + 1, 1); render();
+  });
+  document.getElementById("todayBtn").addEventListener("click", function () {
+    view = new Date(); render();
+  });
+  document.getElementById("addBtn").addEventListener("click", function () { openEditor(null, todayStr()); });
+
+  document.querySelectorAll(".seg button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      filter = b.getAttribute("data-filter");
+      document.querySelectorAll(".seg button").forEach(function (x) {
+        x.setAttribute("aria-pressed", x === b ? "true" : "false");
+      });
+      render();
+    });
+  });
+
+  document.getElementById("saveBtn").addEventListener("click", save);
+  document.getElementById("cancelBtn").addEventListener("click", closeEditor);
+  deleteBtn.addEventListener("click", removePost);
+  backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeEditor(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && backdrop.classList.contains("open")) closeEditor();
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
