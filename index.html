@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Marketing to-do</title>
+
+<!-- ============================================================= -->
+<!-- CONFIG: the only bits you'd ever need to touch.               -->
+<!--   SUPABASE_URL / SUPABASE_KEY: your project's public values.  -->
+<!--   APP_TITLE: change this to rename the board.                 -->
+<!-- ============================================================= -->
+<script>
+  const SUPABASE_URL = "https://axgquyqnvaqkjacuowxs.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_CeA_c2AeOqsfmY6VT-qWGw_gH-EYckP";
+  const APP_TITLE    = "Marketing to-do";
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+
+<style>
+/* ---- Brand tokens (James Hutton Institute) --------------------- */
+:root{
+  --white:#ffffff;
+  --grey:#555559;
+  --green:#85a312;
+  --blue:#569bbe;
+  --purple:#853175;
+  --dark-green:#5e7e2b;
+
+  --page:#f5f6f2;
+  --line:#e4e5df;
+  --muted:#8a8a8e;
+  --card:#ffffff;
+
+  --radius:10px;
+  --shadow:0 1px 2px rgba(85,85,89,.08), 0 4px 14px rgba(85,85,89,.06);
+  --shadow-lift:0 2px 6px rgba(85,85,89,.12), 0 10px 24px rgba(85,85,89,.10);
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Carlito', 'Segoe UI', Calibri, sans-serif;
+  background:var(--page);
+  color:var(--grey);
+  font-size:16px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;}
+input{font-family:inherit;}
+
+/* ---- Layout shell --------------------------------------------- */
+.wrap{max-width:1220px;margin:0 auto;padding:22px 22px 60px;}
+
+header.top{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding-bottom:18px;margin-bottom:20px;
+  border-bottom:2px solid var(--dark-green);
+}
+.brand{display:flex;align-items:baseline;gap:12px;flex:1;min-width:220px;}
+.brand h1{
+  margin:0;font-size:26px;font-weight:700;letter-spacing:-.2px;color:var(--grey);
+}
+.brand .eyebrow{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--dark-green);
+}
+.top-actions{display:flex;gap:8px;align-items:center;}
+
+/* ---- Buttons -------------------------------------------------- */
+.btn{
+  border:1px solid var(--line);background:var(--white);color:var(--grey);
+  padding:8px 13px;border-radius:8px;font-size:14px;font-weight:700;
+  transition:border-color .15s, background .15s, transform .05s;
+  display:inline-flex;align-items:center;gap:7px;
+}
+.btn:hover{border-color:var(--dark-green);}
+.btn:active{transform:translateY(1px);}
+.btn.primary{background:var(--green);border-color:var(--green);color:var(--white);}
+.btn.primary:hover{background:var(--dark-green);border-color:var(--dark-green);}
+.btn.ghost{background:transparent;}
+.btn-sm{padding:5px 9px;font-size:12.5px;border-radius:7px;}
+
+/* ---- Sync line ------------------------------------------------ */
+.syncline{
+  display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);
+  margin:-6px 0 16px;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:none;}
+.dot.stale{background:#c9a227;}
+.dot.err{background:#c0392b;}
+
+/* ---- Error / info banner -------------------------------------- */
+.banner{
+  display:none;margin-bottom:16px;padding:12px 15px;border-radius:8px;
+  background:#fbeceb;border:1px solid #e7b8b3;color:#7a241c;font-size:14px;
+}
+.banner.show{display:block;}
+.banner b{color:#5a1810;}
+
+/* ---- Board ---------------------------------------------------- */
+.board{
+  display:grid;gap:16px;
+  grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));
+  align-items:start;
+}
+.col{
+  background:transparent;border-radius:var(--radius);
+}
+.col-head{
+  display:flex;align-items:center;gap:9px;
+  padding:2px 4px 10px;
+}
+.swatch{width:11px;height:11px;border-radius:3px;flex:none;}
+.col-head h2{
+  margin:0;font-size:16px;font-weight:700;color:var(--grey);flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.col-count{font-size:12px;font-weight:700;color:var(--muted);}
+
+/* add-task row */
+.add-row{display:flex;gap:7px;margin-bottom:12px;}
+.add-row input{
+  flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+  font-size:14px;color:var(--grey);background:var(--white);
+}
+.add-row input:focus{outline:2px solid var(--blue);outline-offset:-1px;border-color:var(--blue);}
+.add-btn{
+  border:1px solid var(--green);background:var(--green);color:#fff;
+  border-radius:8px;width:38px;flex:none;font-size:19px;font-weight:700;line-height:1;
+}
+.add-btn:hover{background:var(--dark-green);border-color:var(--dark-green);}
+
+/* ---- Task cards ----------------------------------------------- */
+.cards{display:flex;flex-direction:column;gap:9px;}
+.card{
+  background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);
+  border-radius:var(--radius);padding:11px 12px;box-shadow:var(--shadow);
+  transition:box-shadow .15s, transform .05s;
+}
+.card:hover{box-shadow:var(--shadow-lift);}
+.card.doing{border-left-color:var(--col-accent, var(--blue));background:#fbfcf7;}
+.card.done{opacity:.62;}
+.card.done .title{text-decoration:line-through;color:var(--muted);}
+
+.card .title{font-size:15px;color:var(--grey);word-break:break-word;cursor:text;}
+.card .title-input{
+  width:100%;border:1px solid var(--blue);border-radius:6px;padding:6px 8px;
+  font-size:15px;color:var(--grey);
+}
+.card-foot{display:flex;align-items:center;gap:6px;margin-top:10px;}
+
+/* live "working on it" tag */
+.workingtag{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--col-accent, var(--blue));margin-right:auto;
+}
+.pulse{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.6s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:.35;transform:scale(.85);}50%{opacity:1;transform:scale(1);}}
+
+.donestamp{font-size:11.5px;color:var(--muted);margin-right:auto;}
+
+/* segmented status control */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;}
+.seg button{
+  border:0;background:var(--white);color:var(--muted);
+  padding:4px 9px;font-size:12px;font-weight:700;line-height:1.3;
+  border-right:1px solid var(--line);
+}
+.seg button:last-child{border-right:0;}
+.seg button:hover{color:var(--grey);background:#f3f4ee;}
+.seg button.on{color:#fff;}
+.seg button.on.s-todo{background:var(--grey);}
+.seg button.on.s-doing{background:var(--blue);}
+.seg button.on.s-done{background:var(--green);}
+
+.icon-btn{
+  border:0;background:transparent;color:var(--muted);font-size:15px;
+  padding:3px 5px;border-radius:6px;line-height:1;
+}
+.icon-btn:hover{color:var(--purple);background:#f3f4ee;}
+
+.divider{
+  display:flex;align-items:center;gap:9px;margin:14px 2px 8px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);
+}
+.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+
+.empty{
+  border:1px dashed var(--line);border-radius:var(--radius);
+  padding:16px;text-align:center;color:var(--muted);font-size:13.5px;background:#fafbf7;
+}
+
+/* ---- Modal ---------------------------------------------------- */
+.overlay{
+  display:none;position:fixed;inset:0;background:rgba(46,50,38,.42);
+  align-items:flex-start;justify-content:center;padding:60px 18px;z-index:50;
+}
+.overlay.show{display:flex;}
+.modal{
+  background:var(--white);border-radius:14px;width:100%;max-width:460px;
+  box-shadow:0 20px 60px rgba(46,50,38,.3);overflow:hidden;
+}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:2px solid var(--dark-green);
+}
+.modal-head h3{margin:0;font-size:18px;font-weight:700;color:var(--grey);}
+.modal-body{padding:18px 20px 22px;}
+.modal-body p.hint{margin:0 0 14px;font-size:13px;color:var(--muted);}
+
+.member-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.member-row{display:flex;align-items:center;gap:8px;}
+.member-row .m-swatch{width:11px;height:11px;border-radius:3px;flex:none;}
+.member-row input{
+  flex:1;border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:14px;color:var(--grey);
+}
+.member-row input:focus{outline:2px solid var(--blue);outline-offset:-1px;border-color:var(--blue);}
+
+.add-member{display:flex;gap:8px;}
+.add-member input{
+  flex:1;border:1px solid var(--line);border-radius:7px;padding:8px 11px;font-size:14px;color:var(--grey);
+}
+.add-member input:focus{outline:2px solid var(--blue);outline-offset:-1px;border-color:var(--blue);}
+
+.report-field{margin-bottom:16px;}
+.report-field label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dark-green);margin-bottom:6px;}
+.report-field select{
+  width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:14px;color:var(--grey);background:var(--white);
+}
+.report-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* ---- Toast ---------------------------------------------------- */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--grey);color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;
+  font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;pointer-events:none;
+  transition:opacity .2s, transform .2s;z-index:80;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.loading{padding:40px;text-align:center;color:var(--muted);font-size:15px;}
+
+@media (max-width:520px){
+  .brand h1{font-size:22px;}
+  .top-actions{width:100%;}
+  .top-actions .btn{flex:1;justify-content:center;}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important;}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Marketing</span>
+      <h1 id="appTitle">Marketing to-do</h1>
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost" id="btnTeam">&#9776; Team</button>
+      <button class="btn ghost" id="btnReport">&#8595; Report</button>
+      <button class="btn primary" id="btnRefresh">Refresh</button>
+    </div>
+  </header>
+
+  <div class="syncline">
+    <span class="dot" id="syncDot"></span>
+    <span id="syncText">Loading&hellip;</span>
+  </div>
+
+  <div class="banner" id="banner"></div>
+
+  <div id="board" class="board">
+    <div class="loading">Fetching the list&hellip;</div>
+  </div>
+</div>
+
+<!-- Team modal -->
+<div class="overlay" id="teamOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Team</h3>
+      <button class="icon-btn" data-close style="font-size:22px;">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">Rename anyone in place, or remove them. Removing a person keeps their finished work in the archive for reports; it just clears their column.</p>
+      <div class="member-list" id="memberList"></div>
+      <div class="add-member">
+        <input type="text" id="newMemberName" placeholder="Add a team member&hellip;" maxlength="60" />
+        <button class="btn primary" id="addMemberBtn">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Report modal -->
+<div class="overlay" id="reportOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Export for reporting</h3>
+      <button class="icon-btn" data-close style="font-size:22px;">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">Everything ever added is kept, including tasks that have dropped off the board. Pull a single month for your report, or the full archive.</p>
+      <div class="report-field">
+        <label for="monthPick">Month</label>
+        <select id="monthPick"></select>
+      </div>
+      <div class="report-actions">
+        <button class="btn primary" id="exportMonthBtn">Download this month</button>
+        <button class="btn" id="exportAllBtn">Download everything</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  "use strict";
+
+  const WEEK_MS = 7*24*60*60*1000;
+  const ACCENTS = ["#85a312","#569bbe","#853175","#5e7e2b"]; // green, blue, purple, dark green
+  const OTHER_ACCENT = "#555559";
+  const STATUS_LABEL = {todo:"To do", doing:"Doing", done:"Done"};
+
+  let sb;
+  try {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch(e){
+    showBanner("Couldn't start the connection to the database. Check the SUPABASE_URL and key near the top of the file.");
+  }
+
+  // state
+  let members = [];
+  let tasks = [];
+  const $ = (id)=>document.getElementById(id);
+
+  document.getElementById("appTitle").textContent = (typeof APP_TITLE==="string" && APP_TITLE) ? APP_TITLE : "Marketing to-do";
+  document.title = document.getElementById("appTitle").textContent;
+
+  /* ---------- helpers ---------- */
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function ukDate(iso){ if(!iso) return ""; const d=new Date(iso); const p=n=>String(n).padStart(2,"0"); return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear(); }
+  function isRecentDone(t){ return t.status==="done" && t.completed_at && (Date.now()-new Date(t.completed_at).getTime() <= WEEK_MS); }
+  function accentFor(i){ return ACCENTS[i % ACCENTS.length]; }
+  function isEditing(){
+    const a=document.activeElement;
+    if(!a) return false;
+    const tag=a.tagName;
+    return tag==="INPUT" || tag==="TEXTAREA" || a.isContentEditable===true;
+  }
+
+  let toastTimer;
+  function toast(msg){
+    const t=$("toast"); t.textContent=msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+  }
+  function showBanner(msg){ const b=$("banner"); b.innerHTML=msg; b.classList.add("show"); }
+  function clearBanner(){ $("banner").classList.remove("show"); }
+
+  function setSync(state){
+    const dot=$("syncDot"), txt=$("syncText");
+    dot.className="dot"+(state==="err"?" err":state==="stale"?" stale":"");
+    if(state==="ok"){ const n=new Date(); txt.textContent="Up to date &middot; "+String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0"); txt.innerHTML=txt.textContent; }
+    else if(state==="err"){ txt.textContent="Can't reach the database"; }
+    else { txt.textContent="Syncing&hellip;"; }
+  }
+
+  /* ---------- data ---------- */
+  async function loadAll(){
+    if(!sb) return;
+    try{
+      const [mRes, tRes] = await Promise.all([
+        sb.from("members").select("*").order("sort_order",{ascending:true}),
+        sb.from("tasks").select("*").order("created_at",{ascending:true})
+      ]);
+      if(mRes.error) throw mRes.error;
+      if(tRes.error) throw tRes.error;
+      members = mRes.data || [];
+      tasks = tRes.data || [];
+      clearBanner(); setSync("ok"); render();
+    }catch(err){
+      setSync("err");
+      const msg = (err && err.message) ? err.message : "Unknown error";
+      showBanner("<b>Couldn't load the list.</b> "+esc(msg)+
+        " &mdash; if the project has been quiet for over a week, Supabase may have paused it. Open your Supabase dashboard and click <b>Resume</b>, then hit Refresh.");
+    }
+  }
+
+  async function addTask(owner, title){
+    title=title.trim(); if(!title) return;
+    const {error}=await sb.from("tasks").insert({title,owner,status:"todo"});
+    if(error){ toast("Couldn't add that"); return; }
+    toast("Added"); await loadAll();
+  }
+  async function setStatus(id,status){
+    const patch={status, completed_at: status==="done" ? new Date().toISOString() : null};
+    const {error}=await sb.from("tasks").update(patch).eq("id",id);
+    if(error){ toast("Couldn't update"); return; }
+    await loadAll();
+  }
+  async function saveTitle(id,title){
+    title=title.trim(); if(!title){ toast("Title can't be empty"); return; }
+    const {error}=await sb.from("tasks").update({title}).eq("id",id);
+    if(error){ toast("Couldn't save"); return; }
+    toast("Saved"); await loadAll();
+  }
+  async function deleteTask(id){
+    const {error}=await sb.from("tasks").delete().eq("id",id);
+    if(error){ toast("Couldn't delete"); return; }
+    toast("Deleted"); await loadAll();
+  }
+  async function addMember(name){
+    name=name.trim(); if(!name) return;
+    const next=(members.reduce((m,x)=>Math.max(m,x.sort_order||0),0))+1;
+    const {error}=await sb.from("members").insert({name,sort_order:next});
+    if(error){ toast("Couldn't add member"); return; }
+    toast("Added "+name); await loadAll(); renderMembers();
+  }
+  async function renameMember(id,name){
+    name=name.trim(); if(!name){ toast("Name can't be empty"); return; }
+    const {error}=await sb.from("members").update({name}).eq("id",id);
+    if(error){ toast("Couldn't rename"); return; }
+    await loadAll(); renderMembers();
+  }
+  async function removeMember(id){
+    const {error}=await sb.from("members").delete().eq("id",id);
+    if(error){ toast("Couldn't remove"); return; }
+    toast("Removed"); await loadAll(); renderMembers();
+  }
+
+  /* ---------- board render ---------- */
+  function render(){
+    const board=$("board");
+    board.innerHTML="";
+
+    const memberNames = members.map(m=>m.name);
+    const columns = members.map((m,i)=>({name:m.name, accent:accentFor(i), addable:true}));
+
+    // any tasks owned by someone no longer on the team -> "Other" column
+    const orphanOwners=[...new Set(tasks.map(t=>t.owner).filter(o=>o && !memberNames.includes(o)))];
+    if(orphanOwners.length){
+      columns.push({name:"Other / former", accent:OTHER_ACCENT, addable:false, owners:orphanOwners});
+    }
+
+    if(!columns.length){
+      board.innerHTML='<div class="empty" style="grid-column:1/-1;">No team members yet. Open <b>Team</b> to add someone.</div>';
+      return;
+    }
+
+    columns.forEach(col=>{
+      const owners = col.owners || [col.name];
+      const mine = tasks.filter(t=>owners.includes(t.owner));
+      const active = mine.filter(t=>t.status!=="done");
+      const recentDone = mine.filter(isRecentDone)
+        .sort((a,b)=>new Date(b.completed_at)-new Date(a.completed_at));
+
+      // doing first, then todo, each oldest-first already
+      active.sort((a,b)=>{
+        const rank=s=>s==="doing"?0:1;
+        return rank(a.status)-rank(b.status);
+      });
+
+      const el=document.createElement("div");
+      el.className="col";
+      el.style.setProperty("--col-accent", col.accent);
+
+      const head=document.createElement("div");
+      head.className="col-head";
+      head.innerHTML='<span class="swatch" style="background:'+col.accent+'"></span>'+
+        '<h2>'+esc(col.name)+'</h2>'+
+        '<span class="col-count">'+active.length+'</span>';
+      el.appendChild(head);
+
+      if(col.addable){
+        const row=document.createElement("div");
+        row.className="add-row";
+        const inp=document.createElement("input");
+        inp.type="text"; inp.placeholder="Add a task&hellip;"; inp.maxLength=200;
+        const btn=document.createElement("button");
+        btn.className="add-btn"; btn.textContent="+"; btn.title="Add task";
+        const go=()=>{ const v=inp.value; if(v.trim()){ inp.value=""; addTask(col.name,v);} inp.focus(); };
+        btn.addEventListener("click",go);
+        inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+        row.appendChild(inp); row.appendChild(btn);
+        el.appendChild(row);
+      }
+
+      const cards=document.createElement("div");
+      cards.className="cards";
+
+      if(!active.length && !recentDone.length){
+        const em=document.createElement("div");
+        em.className="empty";
+        em.textContent = col.addable ? "Nothing on the go. Add the first task above." : "No tasks here.";
+        cards.appendChild(em);
+      }
+
+      active.forEach(t=>cards.appendChild(taskCard(t,col.accent)));
+
+      if(recentDone.length){
+        const div=document.createElement("div");
+        div.className="divider";
+        div.textContent="Done this week";
+        cards.appendChild(div);
+        recentDone.forEach(t=>cards.appendChild(taskCard(t,col.accent)));
+      }
+
+      el.appendChild(cards);
+      board.appendChild(el);
+    });
+  }
+
+  function taskCard(t, accent){
+    const card=document.createElement("div");
+    card.className="card"+(t.status==="doing"?" doing":"")+(t.status==="done"?" done":"");
+    card.style.setProperty("--col-accent", accent);
+
+    // title (click to edit)
+    const title=document.createElement("div");
+    title.className="title";
+    title.textContent=t.title;
+    title.title="Click to edit";
+    title.addEventListener("click",()=>startTitleEdit(card,title,t));
+    card.appendChild(title);
+
+    const foot=document.createElement("div");
+    foot.className="card-foot";
+
+    if(t.status==="doing"){
+      const tag=document.createElement("span");
+      tag.className="workingtag";
+      tag.innerHTML='<span class="pulse"></span>Working on it';
+      foot.appendChild(tag);
+    } else if(t.status==="done" && t.completed_at){
+      const st=document.createElement("span");
+      st.className="donestamp";
+      st.textContent="Done "+ukDate(t.completed_at);
+      foot.appendChild(st);
+    } else {
+      const sp=document.createElement("span");
+      sp.style.marginRight="auto";
+      foot.appendChild(sp);
+    }
+
+    // segmented status
+    const seg=document.createElement("div");
+    seg.className="seg";
+    [["todo","To do","s-todo"],["doing","Doing","s-doing"],["done","Done","s-done"]].forEach(([val,label,cls])=>{
+      const b=document.createElement("button");
+      b.textContent=label;
+      b.className=(t.status===val?("on "+cls):"");
+      b.addEventListener("click",()=>{ if(t.status!==val) setStatus(t.id,val); });
+      seg.appendChild(b);
+    });
+    foot.appendChild(seg);
+
+    const del=document.createElement("button");
+    del.className="icon-btn"; del.innerHTML="&#128465;"; del.title="Delete";
+    del.addEventListener("click",()=>{ if(confirm("Delete this task? This removes it from the archive too.")) deleteTask(t.id); });
+    foot.appendChild(del);
+
+    card.appendChild(foot);
+    return card;
+  }
+
+  function startTitleEdit(card,titleEl,t){
+    const input=document.createElement("input");
+    input.className="title-input"; input.value=t.title; input.maxLength=200;
+    card.replaceChild(input,titleEl);
+    input.focus(); input.setSelectionRange(input.value.length,input.value.length);
+    let done=false;
+    const finish=(save)=>{
+      if(done) return; done=true;
+      if(save && input.value.trim() && input.value.trim()!==t.title) saveTitle(t.id,input.value);
+      else render();
+    };
+    input.addEventListener("keydown",e=>{
+      if(e.key==="Enter"){ e.preventDefault(); finish(true); }
+      if(e.key==="Escape"){ finish(false); }
+    });
+    input.addEventListener("blur",()=>finish(true));
+  }
+
+  /* ---------- team modal ---------- */
+  function renderMembers(){
+    const list=$("memberList"); list.innerHTML="";
+    if(!members.length){
+      list.innerHTML='<div class="empty">No one yet. Add your first team member below.</div>';
+      return;
+    }
+    members.forEach((m,i)=>{
+      const row=document.createElement("div");
+      row.className="member-row";
+      const sw=document.createElement("span");
+      sw.className="m-swatch"; sw.style.background=accentFor(i);
+      const inp=document.createElement("input");
+      inp.type="text"; inp.value=m.name; inp.maxLength=60;
+      inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ inp.blur(); } });
+      inp.addEventListener("blur",()=>{ if(inp.value.trim() && inp.value.trim()!==m.name) renameMember(m.id,inp.value); });
+      const rm=document.createElement("button");
+      rm.className="icon-btn"; rm.innerHTML="&#128465;"; rm.title="Remove";
+      rm.addEventListener("click",()=>{ if(confirm('Remove "'+m.name+'" from the team? Their finished tasks stay in the archive.')) removeMember(m.id); });
+      row.appendChild(sw); row.appendChild(inp); row.appendChild(rm);
+      list.appendChild(row);
+    });
+  }
+
+  /* ---------- report modal ---------- */
+  function buildMonthOptions(){
+    const sel=$("monthPick"); sel.innerHTML="";
+    const now=new Date();
+    const monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    for(let i=0;i<12;i++){
+      const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
+      const opt=document.createElement("option");
+      opt.value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+      opt.textContent=monthNames[d.getMonth()]+" "+d.getFullYear();
+      sel.appendChild(opt);
+    }
+  }
+  function inMonth(iso, ym){
+    if(!iso) return false;
+    const d=new Date(iso);
+    const key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    return key===ym;
+  }
+  function toCSV(rows){
+    const head=["Task","Owner","Status","Created","Completed"];
+    const q=v=>{ v=String(v==null?"":v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+    const lines=[head.join(",")];
+    rows.forEach(t=>{
+      lines.push([q(t.title), q(t.owner), q(STATUS_LABEL[t.status]||t.status), q(ukDate(t.created_at)), q(ukDate(t.completed_at))].join(","));
+    });
+    return lines.join("\r\n");
+  }
+  function download(csv, name){
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=name; document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+  function exportMonth(){
+    const ym=$("monthPick").value;
+    const rows=tasks.filter(t=>inMonth(t.created_at,ym)||inMonth(t.completed_at,ym));
+    if(!rows.length){ toast("Nothing recorded that month"); return; }
+    download(toCSV(rows),"marketing-tasks-"+ym+".csv");
+    toast("Exported "+rows.length+" task"+(rows.length===1?"":"s"));
+  }
+  function exportAll(){
+    if(!tasks.length){ toast("Nothing to export yet"); return; }
+    download(toCSV(tasks),"marketing-tasks-all.csv");
+    toast("Exported the full archive");
+  }
+
+  /* ---------- modal plumbing ---------- */
+  function openOverlay(id){ $(id).classList.add("show"); }
+  function closeOverlay(el){ el.classList.remove("show"); }
+  document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",e=>closeOverlay(e.target.closest(".overlay"))));
+  document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) closeOverlay(o); }));
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape") document.querySelectorAll(".overlay.show").forEach(closeOverlay); });
+
+  $("btnTeam").addEventListener("click",()=>{ renderMembers(); openOverlay("teamOverlay"); });
+  $("btnReport").addEventListener("click",()=>{ buildMonthOptions(); openOverlay("reportOverlay"); });
+  $("btnRefresh").addEventListener("click",()=>{ setSync("stale"); loadAll(); });
+  $("addMemberBtn").addEventListener("click",()=>{ const i=$("newMemberName"); if(i.value.trim()){ addMember(i.value); i.value=""; i.focus(); } });
+  $("newMemberName").addEventListener("keydown",e=>{ if(e.key==="Enter"){ const i=$("newMemberName"); if(i.value.trim()){ addMember(i.value); i.value=""; } } });
+  $("exportMonthBtn").addEventListener("click",exportMonth);
+  $("exportAllBtn").addEventListener("click",exportAll);
+
+  /* ---------- auto-refresh (pauses while you're typing) ---------- */
+  setInterval(()=>{ if(!isEditing() && !document.querySelector(".overlay.show")) loadAll(); }, 30000);
+  window.addEventListener("focus",()=>{ if(!isEditing()) loadAll(); });
+
+  /* ---------- go ---------- */
+  loadAll();
+})();
+</script>
+</body>
+</html>
