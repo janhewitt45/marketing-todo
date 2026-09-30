@@ -197,6 +197,7 @@
   .grid { display: grid; grid-template-columns: repeat(7, 1fr); }
   .cell {
     min-height: 118px;
+    min-width: 0;
     border-right: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
     padding: 6px 7px 8px;
@@ -241,9 +242,14 @@
     border-radius: 5px;
     padding: 4px 6px 4px 7px;
     cursor: pointer;
-    display: block;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     width: 100%;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .chip:hover { filter: brightness(.97); }
   .chip:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
