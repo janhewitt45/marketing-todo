@@ -257,6 +257,16 @@
   .chip.ig { border-left-color: var(--ig); background: #f6eef4; }
   .chip.both { border-left-color: var(--both); background: #f2f6e6; }
   .chip .tag { font-size: .66rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; opacity: .7; margin-right: 4px; }
+  .chip .sched {
+    display: inline-block;
+    width: 14px; height: 14px; line-height: 14px;
+    text-align: center;
+    background: var(--green);
+    color: #fff;
+    border-radius: 50%;
+    font-size: .62rem; font-weight: 700;
+    margin-right: 4px;
+  }
 
   /* ---- mobile agenda ---- */
   .agenda { display: none; }
@@ -329,6 +339,19 @@
   .platform-pick label.ig:has(input:checked) { border-color: var(--ig); box-shadow: inset 0 0 0 1px var(--ig); }
   .platform-pick label.both:has(input:checked) { border-color: var(--both); box-shadow: inset 0 0 0 1px var(--both); }
   .platform-pick label:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  .sched-row { margin-top: 12px; }
+  .sched-row label {
+    display: flex; align-items: center; gap: 9px;
+    margin: 0; font-weight: 700; color: #3c4235; font-size: .9rem;
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 10px 12px; cursor: pointer;
+    transition: background .1s, border-color .1s;
+  }
+  .sched-row input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; flex: none; }
+  .sched-row label:has(input:checked) { border-color: var(--green); background: #f2f6e6; }
+
+  .agenda .row .schedtext { color: var(--dark-green); font-weight: 700; }
 
   .modal .actions { display: flex; gap: 10px; margin-top: 20px; align-items: center; }
   .modal .actions .spacer { flex: 1; }
@@ -410,6 +433,10 @@
       <label class="li"><input type="radio" name="platform" value="linkedin" /><span class="dot li"></span>LinkedIn</label>
       <label class="ig"><input type="radio" name="platform" value="instagram" /><span class="dot ig"></span>Instagram</label>
       <label class="both"><input type="radio" name="platform" value="both" checked /><span class="dot both"></span>Both</label>
+    </div>
+
+    <div id="schedRow" class="sched-row">
+      <label><input type="checkbox" id="fScheduled" /> Scheduled in LinkedIn</label>
     </div>
 
     <label for="fTitle">Post idea</label>
@@ -565,7 +592,14 @@
   function makeChip(p) {
     const b = document.createElement("button");
     b.className = "chip " + p.platform;
-    b.title = p.title + (p.owner ? " · " + p.owner : "");
+    const isSched = p.scheduled && p.platform !== "instagram";
+    b.title = p.title + (p.owner ? " · " + p.owner : "") + (isSched ? " · scheduled in LinkedIn" : "");
+    if (isSched) {
+      const s = document.createElement("span");
+      s.className = "sched";
+      s.textContent = "\u2713";
+      b.appendChild(s);
+    }
     const tag = document.createElement("span");
     tag.className = "tag";
     tag.textContent = PLATFORM_SHORT[p.platform];
@@ -610,8 +644,9 @@
         row.innerHTML = "<div class='bar'></div>";
         const txt = document.createElement("div");
         txt.style.flex = "1";
+        var schedTag = (p.scheduled && p.platform !== "instagram") ? " · <span class='schedtext'>&#10003; Scheduled</span>" : "";
         txt.innerHTML = "<div>" + escapeHtml(p.title) + "</div><div class='meta'>" +
-          PLATFORM_LABEL[p.platform] + (p.owner ? " · " + escapeHtml(p.owner) : "") + "</div>";
+          PLATFORM_LABEL[p.platform] + (p.owner ? " · " + escapeHtml(p.owner) : "") + schedTag + "</div>";
         row.appendChild(txt);
         row.addEventListener("click", function () { openEditor(p, p.post_date); });
         day.appendChild(row);
@@ -632,6 +667,8 @@
   const fTitle = document.getElementById("fTitle");
   const fOwner = document.getElementById("fOwner");
   const fNotes = document.getElementById("fNotes");
+  const fScheduled = document.getElementById("fScheduled");
+  const schedRow = document.getElementById("schedRow");
   const deleteBtn = document.getElementById("deleteBtn");
 
   function setPlatform(v) {
@@ -641,6 +678,11 @@
   function getPlatform() {
     const el = document.querySelector('input[name="platform"]:checked');
     return el ? el.value : "both";
+  }
+  function updateSchedRow() {
+    const show = getPlatform() !== "instagram";
+    schedRow.style.display = show ? "block" : "none";
+    if (!show) fScheduled.checked = false;
   }
 
   function openEditor(post, dateStr) {
@@ -652,6 +694,8 @@
     fTitle.value = post ? post.title : "";
     fOwner.value = post && post.owner ? post.owner : "";
     fNotes.value = post && post.notes ? post.notes : "";
+    fScheduled.checked = post ? !!post.scheduled : false;
+    updateSchedRow();
     deleteBtn.style.display = post ? "inline-block" : "none";
     backdrop.classList.add("open");
     setTimeout(function () { fTitle.focus(); }, 30);
@@ -666,7 +710,8 @@
       platform: getPlatform(),
       title: title,
       owner: fOwner.value.trim() || null,
-      notes: fNotes.value.trim() || null
+      notes: fNotes.value.trim() || null,
+      scheduled: getPlatform() !== "instagram" ? fScheduled.checked : false
     };
     let res;
     if (editingId) res = await db.from("content_posts").update(row).eq("id", editingId);
@@ -718,6 +763,9 @@
     });
   });
 
+  document.querySelectorAll('input[name="platform"]').forEach(function (r) {
+    r.addEventListener("change", updateSchedRow);
+  });
   document.getElementById("saveBtn").addEventListener("click", save);
   document.getElementById("cancelBtn").addEventListener("click", closeEditor);
   deleteBtn.addEventListener("click", removePost);
